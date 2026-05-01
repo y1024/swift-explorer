@@ -6,23 +6,29 @@
 //
 
 import XCTest
-import Lowlevel
+import Analytics
 @testable import SwiftExplorer
 
 final class HomeViewModelTests: XCTestCase {
-    
+
     var sut: HomeViewModel!
-    
+    var analyticsStub: AnalyticsTrackingStub!
+    var crashlyticsStub: CrashlyticsTrackingStub!
+
     override func setUp() {
         super.setUp()
-        sut = HomeViewModel()
+        analyticsStub = AnalyticsTrackingStub()
+        crashlyticsStub = CrashlyticsTrackingStub()
+        sut = HomeViewModel(analytics: analyticsStub, crashlytics: crashlyticsStub)
     }
-    
+
     override func tearDown() {
         sut = nil
+        analyticsStub = nil
+        crashlyticsStub = nil
         super.tearDown()
     }
-    
+
     func testInitialState() {
         XCTAssertEqual(sut.swiftCode, "")
         XCTAssertEqual(sut.llvm, "")
@@ -30,96 +36,65 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(sut.optimizationLevel, .balanced)
         XCTAssertFalse(sut.showAlert)
     }
-    
-    func testTapGenerateWithEmptyCode() {
-        let llvm = Llvm(
-            swiftCode: .constant(""),
-            llvm: .constant(""),
-            optimizationLevel: .constant(.balanced)
-        )
-        
-        sut.tapGenerate(llvm: llvm)
-        
+
+    func testGenerateWithEmptyCodeShowsAlert() {
+        sut.generate()
+
         XCTAssertTrue(sut.showAlert)
         XCTAssertEqual(sut.assemblyCode, "")
     }
-    
-    func testTapGenerateWithValidCode() {
-        sut.swiftCode = "let x = 5"
-        
-        let llvm = Llvm(
-            swiftCode: .constant(sut.swiftCode),
-            llvm: .constant(sut.llvm),
-            optimizationLevel: .constant(sut.optimizationLevel)
-        )
-        
-        sut.tapGenerate(llvm: llvm)
-        
-        XCTAssertFalse(sut.showAlert)
-        XCTAssertFalse(sut.assemblyCode.isEmpty)
+
+    func testGenerateWithEmptyCodeFiresEmptyFieldEvent() {
+        sut.generate()
+
+        XCTAssertEqual(analyticsStub.loggedEvents, [AnalyticsEvents.Home.emptyField.rawValue])
     }
-    
+
+    func testGenerateWithValidCodeUpdatesAssembly() {
+        sut.swiftCode = "let x = 5"
+        sut.generate()
+
+        XCTAssertFalse(sut.assemblyCode.isEmpty)
+        XCTAssertFalse(sut.showAlert)
+    }
+
+    func testGenerateWithValidCodeFiresButtonEvent() {
+        sut.swiftCode = "let x = 5"
+        sut.generate()
+
+        XCTAssertEqual(analyticsStub.loggedEvents, [AnalyticsEvents.Home.button.rawValue])
+        XCTAssertEqual(crashlyticsStub.loggedEvents, [CrashlyticsEvents.Home.button.rawValue])
+    }
+
+    func testOnAppearFiresViewEvent() {
+        sut.onAppear()
+
+        XCTAssertEqual(analyticsStub.loggedEvents, [AnalyticsEvents.Home.view.rawValue])
+    }
+
     func testOptimizationLevelChange() {
         sut.optimizationLevel = .none
         XCTAssertEqual(sut.optimizationLevel, .none)
-        
+
         sut.optimizationLevel = .size
         XCTAssertEqual(sut.optimizationLevel, .size)
-        
+
         sut.optimizationLevel = .unchecked
         XCTAssertEqual(sut.optimizationLevel, .unchecked)
-        
+
         sut.optimizationLevel = .balanced
         XCTAssertEqual(sut.optimizationLevel, .balanced)
     }
-    
-    func testOnAppear() {
-        sut.onAppear()
-        XCTAssertNotNil(sut)
-    }
-    
-    func testSwiftCodeBinding() {
-        sut.swiftCode = "func test() {}"
-        XCTAssertEqual(sut.swiftCode, "func test() {}")
-    }
-    
-    func testLlvmBinding() {
-        sut.llvm = "define void @main()"
-        XCTAssertEqual(sut.llvm, "define void @main()")
-    }
-    
-    func testAssemblyCodeBinding() {
-        sut.assemblyCode = ".section __TEXT"
-        XCTAssertEqual(sut.assemblyCode, ".section __TEXT")
-    }
-    
-    func testShowAlertToggle() {
-        XCTAssertFalse(sut.showAlert)
-        sut.showAlert = true
-        XCTAssertTrue(sut.showAlert)
-    }
-    
-    func testTapGenerateWithNonEmptyCodeUpdatesAssembly() {
-        sut.swiftCode = "let y = 10"
-        let initialAssembly = sut.assemblyCode
-        
-        let llvm = Llvm(
-            swiftCode: .constant(sut.swiftCode),
-            llvm: .constant(sut.llvm),
-            optimizationLevel: .constant(sut.optimizationLevel)
-        )
-        
-        sut.tapGenerate(llvm: llvm)
-        
-        XCTAssertNotEqual(sut.assemblyCode, initialAssembly)
-    }
-    
-    func testMultipleOptimizationLevelChanges() {
-        let levels: [OptimizationLevel] = [.none, .balanced, .size, .unchecked, .balanced]
-        
-        for level in levels {
-            sut.optimizationLevel = level
-            XCTAssertEqual(sut.optimizationLevel, level)
-        }
-    }
+}
+
+// MARK: - Stubs
+
+final class AnalyticsTrackingStub: AnalyticsTracking {
+    private(set) var loggedEvents: [String] = []
+    func event(_ name: String) { loggedEvents.append(name) }
+}
+
+final class CrashlyticsTrackingStub: CrashlyticsTracking {
+    private(set) var loggedEvents: [String] = []
+    func event(_ name: String) { loggedEvents.append(name) }
 }

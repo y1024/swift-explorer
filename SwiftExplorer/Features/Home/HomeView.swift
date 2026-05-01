@@ -100,13 +100,7 @@ struct HomeView: View {
     
     private func exploreButtonView() -> some View {
         Button {
-            let llvm = Llvm(
-                swiftCode: $viewModel.swiftCode,
-                llvm: $viewModel.llvm,
-                optimizationLevel: $viewModel.optimizationLevel
-            )
-            
-            viewModel.tapGenerate(llvm: llvm)
+            viewModel.generate()
         } label: {
             Text(L10n.exploreButton)
                 .font(.latoBlack(size: 16))
