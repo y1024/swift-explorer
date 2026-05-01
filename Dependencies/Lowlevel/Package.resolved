@@ -1,0 +1,15 @@
+{
+  "originHash" : "7af172a101ab4f87c65adcf92c9dd62b3057688d549a66b90797493887ad64ea",
+  "pins" : [
+    {
+      "identity" : "swiftgenplugin",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftGen/SwiftGenPlugin",
+      "state" : {
+        "revision" : "879b85a470cacd70c19e22eb7e11a3aed66f4068",
+        "version" : "6.6.2"
+      }
+    }
+  ],
+  "version" : 3
+}

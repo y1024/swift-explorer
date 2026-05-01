@@ -6,62 +6,39 @@
 //
 
 import XCTest
-import SwiftUI
 @testable import Lowlevel
 
 final class LlvmTests: XCTestCase {
-    
-    var swiftCode: String!
-    var llvm: String!
-    var optimizationLevel: OptimizationLevel!
+
     var sut: Llvm!
-    
+
     override func setUp() {
         super.setUp()
-        swiftCode = ""
-        llvm = ""
-        optimizationLevel = .balanced
-        sut = Llvm(
-            swiftCode: .constant(swiftCode),
-            llvm: .constant(llvm),
-            optimizationLevel: .constant(optimizationLevel)
-        )
+        sut = Llvm()
     }
-    
+
     override func tearDown() {
         sut = nil
-        swiftCode = nil
-        llvm = nil
-        optimizationLevel = nil
         super.tearDown()
     }
-    
-    func testValidationFieldSwiftCodeCreatesTemporaryFiles() {
-        swiftCode = "let x = 5"
-        sut = Llvm(
-            swiftCode: .constant(swiftCode),
-            llvm: .constant(llvm),
-            optimizationLevel: .constant(optimizationLevel)
-        )
-        
-        let (tempFile, outputFile) = sut.validationFieldSwiftCode()
-        
-        XCTAssertTrue(tempFile.contains("tempfile.swift"))
-        XCTAssertTrue(outputFile.contains("output.ll"))
+
+    func testGenerateLlvmWritesTempFile() {
+        _ = sut.generateLlvm(swiftCode: "let x = 5", optimizationLevel: .balanced)
+
+        let tempFile = NSTemporaryDirectory() + "tempfile.swift"
         XCTAssertTrue(FileManager.default.fileExists(atPath: tempFile))
     }
-    
-    func testValidationFieldSwiftCodeHandlesSmartQuotes() {
-        swiftCode = "let x = \"hello\""
-        sut = Llvm(
-            swiftCode: .constant(swiftCode),
-            llvm: .constant(llvm),
-            optimizationLevel: .constant(optimizationLevel)
-        )
-        
-        let (tempFile, _) = sut.validationFieldSwiftCode()
-        
+
+    func testGenerateLlvmNormalizesSmartQuotes() {
+        _ = sut.generateLlvm(swiftCode: "\u{201C}hello\u{201D}", optimizationLevel: .balanced)
+
+        let tempFile = NSTemporaryDirectory() + "tempfile.swift"
         let content = try? String(contentsOfFile: tempFile, encoding: .utf8)
-        XCTAssertEqual(content, "let x = \"hello\"")
+        XCTAssertEqual(content, "\"hello\"")
+    }
+
+    func testGenerateLlvmWithValidCodeReturnsNonEmptyResult() {
+        let result = sut.generateLlvm(swiftCode: "let x = 5", optimizationLevel: .balanced)
+        XCTAssertFalse(result.isEmpty)
     }
 }
